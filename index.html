@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A3761" />
+  <title>CEO XB · Leaderboard concept</title>
+
+  <!-- Font: Plus Jakarta Sans (required by the brief) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind CDN (JIT, supports arbitrary values like text-[40px]) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React 18 + Babel standalone (so the JSX below runs as-is) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: #e2e8f0; /* slate-200, matches outer wrapper */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    @keyframes ceoxbSlideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes ceoxbFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes ceoxbSheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes ceoxbGlow    { 0%, 100% { opacity: .55; } 50% { opacity: .85; } }
+
+    .ceoxb-row   { animation: ceoxbSlideUp .45s ease-out both; }
+    .ceoxb-fade  { animation: ceoxbFadeIn .35s ease-out both; }
+    .ceoxb-sheet { animation: ceoxbSheetIn .28s cubic-bezier(.2,.8,.2,1) both; }
+    .ceoxb-glow  { animation: ceoxbGlow 6s ease-in-out infinite; }
+
+    .ceoxb-scroll::-webkit-scrollbar { display: none; }
+    .ceoxb-scroll { scrollbar-width: none; }
+
+    /* Loading state shown while Babel compiles the JSX (~300ms) */
+    .ceoxb-bootstrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #5D666F;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="ceoxb-bootstrap">Loading prototype…</div>
+  </div>
+
+  <script type="text/babel" data-presets="react">
+    /*
+     * CEO XB · Leaderboard Concept Prototype
+     * Single-file HTML build for unmoderated testing on Optimal Workshop.
+     * See the accompanying .jsx file for the full WCAG audit and contrast tables.
+     */
+
+    const { useState, useEffect, useRef } = React;
+
+    // ===================================================================
+    // Inline SVG icon set (replaces lucide-react for CDN simplicity)
+    // Path data is the official lucide.dev geometry so visuals match.
+    // ===================================================================
+
+    function Svg({ size = 24, color, strokeWidth = 2, fill = 'none', children, ...rest }) {
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          {...rest}
+          width={size}
+          height={size}
+          fill={fill}
+          stroke={color || 'currentColor'}
+          strokeWidth={strokeWidth}
+        >
+          {children}
+        </svg>
+      );
+    }
+
+    const ChevronLeft   = (p) => <Svg {...p}><path d="m15 18-6-6 6-6"/></Svg>;
+    const ChevronRight  = (p) => <Svg {...p}><path d="m9 18 6-6-6-6"/></Svg>;
+    const Bell          = (p) => <Svg {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></Svg>;
+    const Home          = (p) => <Svg {...p}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Svg>;
+    const BookOpen      = (p) => <Svg {...p}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></Svg>;
+    const Users         = (p) => <Svg {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>;
+    const MessageSquare = (p) => <Svg {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></Svg>;
+    const User          = (p) => <Svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Svg>;
+    const TrendingUp    = (p) => <Svg {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Svg>;
+    const Lock          = (p) => <Svg {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Svg>;
+    const Globe         = (p) => <Svg {...p}><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></Svg>;
+    const X             = (p) => <Svg {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Svg>;
+    const Calendar      = (p) => <Svg {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></Svg>;
+    const ArrowRight    = (p) => <Svg {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></Svg>;
+    const ArrowUpRight  = (p) => <Svg {...p}><path d="M7 7h10v10"/><path d="M7 17 17 7"/></Svg>;
+    const ArrowUp       = (p) => <Svg {...p}><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></Svg>;
+    const Mic           = (p) => <Svg {...p}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></Svg>;
+    const Eye           = (p) => <Svg {...p}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></Svg>;
+
+    // ===================================================================
+    // Data
+    // ===================================================================
+
+    const LEADERBOARD = [
+      { rank: 1,  name: 'Joachim Becker',        company: 'Xeras Bonus',           milestone: 'Closed €42M Series B',     points: 4280, ago: '3 days ago',  avatar: '#0C4C6F' },
+      { rank: 2,  name: 'Sofia Marchetti',       company: 'Avante Diagnostics',    milestone: 'Closed €38M Series C',     points: 3915, ago: '1 week ago',   avatar: '#106E9E' },
+      { rank: 3,  name: 'Henrik Sørensen',       company: 'Lindblad Therapeutics', milestone: 'Closed €31M Series B',     points: 3640, ago: '2 weeks ago',  avatar: '#0A3761' },
+      { rank: 4,  name: 'Anneliese Vogel',       company: 'NordMed Devices',       milestone: 'Closed €28M Series B',     points: 3210, ago: '3 weeks ago',  avatar: '#1a4970' },
+      { rank: 5,  name: 'Marcus Tan',            company: 'Caldera Bio',           milestone: '€24M Series A extension',  points: 2980, ago: '1 month ago',  avatar: '#0C4C6F' },
+      { rank: 6,  name: 'Eliska Novák',          company: 'Praga Biosystems',      milestone: '€22M seed extension',      points: 2705, ago: '1 month ago',  avatar: '#106E9E' },
+      { rank: 7,  name: 'Catalina Ferrer',       company: 'Ibérica Biotech',       milestone: 'Closed €19M Series A',     points: 2480, ago: '5 weeks ago',  avatar: '#0A3761' },
+      { rank: 8,  name: 'Mathilde Laurent',      company: 'Sénart Pharma',         milestone: 'Closed €17M Series A',     points: 2310, ago: '6 weeks ago',  avatar: '#1a4970' },
+      { rank: 9,  name: 'Ruben Visser',          company: 'Delft Cell Therapeutics', milestone: '€15M seed',              points: 2090, ago: '6 weeks ago',  avatar: '#0C4C6F' },
+      { rank: 10, name: 'Alessio Romano',        company: 'Milano Oncology Labs',  milestone: 'Closed €13M Series A',     points: 1950, ago: '7 weeks ago',  avatar: '#106E9E' },
+      { rank: 11, name: 'Ingrid Halvorsen',      company: 'Bergen Vaccines',       milestone: '€11M seed',                points: 1740, ago: '2 months ago', avatar: '#0A3761' },
+      { rank: 12, name: 'Pieter Janssen',        company: 'Antwerp Immunology',    milestone: '€9.5M seed',               points: 1580, ago: '2 months ago', avatar: '#1a4970' },
+      { rank: 13, name: 'Dimitra Konstantinou',  company: 'Aegean Biosciences',    milestone: '€8M seed',                 points: 1490, ago: '2 months ago', avatar: '#0C4C6F' },
+      { rank: 14, name: 'Lukas Hartmann',        company: 'Berlin Biopharm',       milestone: '€6M seed',                 points: 1000, ago: '3 months ago', avatar: '#106E9E', isUser: true },
+      { rank: 15, name: 'Kasper Lindqvist',      company: 'Nordic Genomics',       milestone: '€5M pre-seed',             points: 920,  ago: '3 months ago', avatar: '#0A3761' },
+      { rank: 16, name: 'Lina Kowalski',         company: 'Warszawa Therapeutics', milestone: '€4.5M pre-seed',           points: 870,  ago: '3 months ago', avatar: '#1a4970' },
+      { rank: 17, name: 'Tobias Klein',          company: 'München Cardiac',       milestone: '€3M angel round',          points: 720,  ago: '4 months ago', avatar: '#0C4C6F' },
+    ];
+
+    const USER = LEADERBOARD.find(p => p.isUser);
+    const NEXT_RANK = LEADERBOARD.find(p => p.rank === USER.rank - 1);
+    const POINTS_TO_NEXT = NEXT_RANK.points - USER.points;
+
+    const CLIMB_ACTIVITIES = [
+      { id: 'session', category: 'Knowledge sharing', iconName: 'mic',      title: 'Lead a peer session',         detail: '40 min · pick a topic you know cold. Cohort #5 and #6 each ran one last quarter.', points: 120 },
+      { id: 'dinner',  category: 'Peer connections', iconName: 'calendar', title: 'RSVP to the cohort dinner',   detail: 'Tuesday · 16 Sep · London. Standing 4 of 17 spots remain.',                       points: 180 },
+      { id: 'intros',  category: 'Peer connections', iconName: 'users',    title: 'Schedule three peer 1:1s',    detail: 'Connect already surfaces 6 cohort members in adjacent indications.',              points: 150 },
+      { id: 'discuss', category: 'Knowledge sharing', iconName: 'message',  title: 'Share a milestone in Discuss',detail: 'Your seed close is exactly the post #13 wishes existed when they were here.',     points: 90  },
+    ];
+
+    // Categorised view of how Lukas's 1,000 pts breaks down vs. the cap per category.
+    // Caps are calibrated so that the cohort leader (4,280 pts) sits near the top.
+    const SCORE_CATEGORIES = [
+      {
+        id: 'milestones',
+        label: 'Milestones',
+        earned: 600,
+        max: 3000,
+        detail: 'Seed · €6M closed Mar 2024',
+      },
+      {
+        id: 'peer',
+        label: 'Peer connections',
+        earned: 220,
+        max: 800,
+        detail: '4 peer 1:1s, 2 cohort dinners',
+      },
+      {
+        id: 'sharing',
+        label: 'Knowledge sharing',
+        earned: 180,
+        max: 700,
+        detail: '3 Discuss posts, 1 peer session led',
+      },
+    ];
+
+    // Map iconName to component for the climb cards.
+    const CLIMB_ICONS = { mic: Mic, calendar: Calendar, users: Users, message: MessageSquare };
+
+    const VISIBILITY_OPTIONS = [
+      { id: 'private', icon: Lock,  label: 'Private',     desc: 'Only you see your rank. You still appear unranked in the cohort view.' },
+      { id: 'cohort',  icon: Users, label: 'Cohort only', desc: 'Visible to the 17 CEOs in your current XB cohort. Default for new members.' },
+      { id: 'all',     icon: Globe, label: 'All members', desc: 'Visible to every active CEO XB member across cohorts.' },
+    ];
+
+    // ===================================================================
+    // Root component
+    // ===================================================================
+
+    function CEOXBLeaderboardPrototype() {
+      const [view, setView] = useState('home');  // 'home' | 'leaderboard' | 'climb'
+      const [visibilityOpen, setVisibilityOpen] = useState(false);
+      const [visibility, setVisibility] = useState('cohort');
+      // Lifted plan state — persists across view changes so Home can show
+      // a "My plan" surface after the user commits to moves in Climb.
+      const [plan, setPlan] = useState({});
+
+      // Reset scroll on every view change. Without this, navigating from a
+      // mid-list scroll position on Leaderboard would land Climb mid-page.
+      useEffect(() => {
+        window.scrollTo(0, 0);
+      }, [view]);
+
+      // Home tab in the bottom nav. Setting view alone would not re-run the
+      // scroll effect when already on home, so we scroll explicitly too —
+      // matches the standard "tap-active-tab to scroll to top" mobile pattern.
+      const goHome = () => {
+        setView('home');
+        window.scrollTo(0, 0);
+      };
+
+      return (
+        <div
+          className="min-h-screen flex items-start justify-center bg-slate-200"
+          style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}
+        >
+          <div
+            className="w-full max-w-[390px] min-h-screen bg-white relative overflow-hidden"
+            style={{ boxShadow: '0 0 40px rgba(0,0,0,0.08)' }}
+          >
+            {view === 'home' && (
+              <HomeView
+                plan={plan}
+                onOpenLeaderboard={() => setView('leaderboard')}
+                onOpenClimb={() => setView('climb')}
+                onHome={goHome}
+              />
+            )}
+
+            {view === 'leaderboard' && (
+              <LeaderboardView
+                onBack={() => setView('home')}
+                onClimb={() => setView('climb')}
+                onVisibility={() => setVisibilityOpen(true)}
+                visibility={visibility}
+                onHome={goHome}
+              />
+            )}
+
+            {view === 'climb' && (
+              <ClimbView
+                onBack={() => setView('leaderboard')}
+                plan={plan}
+                setPlan={setPlan}
+                onHome={goHome}
+              />
+            )}
+
+            {visibilityOpen && (
+              <VisibilitySheet
+                value={visibility}
+                onChange={setVisibility}
+                onClose={() => setVisibilityOpen(false)}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // Header chrome
+    // ===================================================================
+
+    function StatusBar() {
+      return (
+        <div
+          className="h-11 px-6 flex items-center justify-between text-black select-none"
+          aria-hidden="true"
+        >
+          <span className="text-[15px] font-bold tracking-tight">9:41</span>
+          <div className="flex items-center gap-1.5">
+            <svg width="17" height="11" viewBox="0 0 17 11" fill="none" aria-hidden="true">
+              <rect x="0" y="7" width="3" height="4" rx=".5" fill="#000" />
+              <rect x="4.5" y="5" width="3" height="6" rx=".5" fill="#000" />
+              <rect x="9" y="3" width="3" height="8" rx=".5" fill="#000" />
+              <rect x="13.5" y="0" width="3" height="11" rx=".5" fill="#000" />
+            </svg>
+            <svg width="26" height="12" viewBox="0 0 26 12" fill="none" aria-hidden="true">
+              <rect x="0.5" y="0.5" width="22" height="11" rx="2.5" stroke="#000" />
+              <rect x="2" y="2" width="19" height="8" rx="1.5" fill="#000" />
+              <rect x="23.5" y="4" width="1.5" height="4" rx=".5" fill="#000" />
+            </svg>
+          </div>
+        </div>
+      );
+    }
+
+    function StatusBarTinted({ dark }) {
+      if (!dark) return <StatusBar />;
+      return (
+        <div
+          className="h-11 px-6 flex items-center justify-between select-none"
+          style={{ color: '#FFFFFF' }}
+          aria-hidden="true"
+        >
+          <span className="text-[15px] font-bold tracking-tight">9:41</span>
+          <div className="flex items-center gap-1.5">
+            <svg width="17" height="11" viewBox="0 0 17 11" fill="none" aria-hidden="true">
+              <rect x="0" y="7" width="3" height="4" rx=".5" fill="#fff" />
+              <rect x="4.5" y="5" width="3" height="6" rx=".5" fill="#fff" />
+              <rect x="9" y="3" width="3" height="8" rx=".5" fill="#fff" />
+              <rect x="13.5" y="0" width="3" height="11" rx=".5" fill="#fff" />
+            </svg>
+            <svg width="26" height="12" viewBox="0 0 26 12" fill="none" aria-hidden="true">
+              <rect x="0.5" y="0.5" width="22" height="11" rx="2.5" stroke="#fff" />
+              <rect x="2" y="2" width="19" height="8" rx="1.5" fill="#fff" />
+              <rect x="23.5" y="4" width="1.5" height="4" rx=".5" fill="#fff" />
+            </svg>
+          </div>
+        </div>
+      );
+    }
+
+    function HeaderChrome({ title = null, onBack = null, rightSlot = null, dark = false }) {
+      const bg = dark ? '#0A3761' : '#FFFFFF';
+      const fg = dark ? '#FFFFFF' : '#000000';
+
+      return (
+        <div style={{ background: bg, color: fg }}>
+          <StatusBarTinted dark={dark} />
+          <div className="h-14 px-4 flex items-center justify-between">
+            <div className="w-11 h-11 -ml-1 flex items-center justify-center">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  aria-label="Back to home"
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-200 hover:bg-black/5 active:bg-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+                  style={{ color: fg }}
+                >
+                  <ChevronLeft size={24} strokeWidth={2.25} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            {title && (
+              <h2 className="text-[17px] font-extrabold" style={{ color: fg }}>
+                {title}
+              </h2>
+            )}
+
+            <div className="w-11 h-11 -mr-1 flex items-center justify-center">
+              {rightSlot || (
+                <button
+                  aria-label="Notifications, 1 new"
+                  className="w-11 h-11 rounded-full flex items-center justify-center relative transition-colors duration-200 hover:bg-black/5 active:bg-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+                  style={{ color: fg }}
+                >
+                  <Bell size={20} strokeWidth={2} aria-hidden="true" />
+                  <span
+                    className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full"
+                    style={{ background: '#106E9E' }}
+                    aria-hidden="true"
+                  />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // Bottom nav
+    // ===================================================================
+
+    function BottomNav({ active = 'home', onHome }) {
+      const tabs = [
+        { id: 'home',    label: 'Home',    icon: Home,          onClick: onHome },
+        { id: 'learn',   label: 'Learn',   icon: BookOpen,      onClick: undefined },
+        { id: 'connect', label: 'Connect', icon: Users,         onClick: undefined },
+        { id: 'discuss', label: 'Discuss', icon: MessageSquare, onClick: undefined },
+        { id: 'profile', label: 'Profile', icon: User,          onClick: undefined },
+      ];
+
+      return (
+        <nav
+          className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] pb-5 z-30"
+          style={{ background: '#0A3761' }}
+          aria-label="Primary"
+        >
+          <div className="flex items-stretch justify-between px-3 pt-2.5 pb-1">
+            {tabs.map(t => {
+              const Icon = t.icon;
+              const isActive = t.id === active;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={t.onClick}
+                  aria-label={t.label}
+                  aria-current={isActive ? 'page' : undefined}
+                  className="flex-1 flex flex-col items-center gap-1.5 py-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                  style={{ minHeight: 56 }}
+                >
+                  <Icon
+                    size={22}
+                    strokeWidth={isActive ? 2.5 : 1.75}
+                    fill={isActive ? '#FFFFFF' : 'none'}
+                    color="#FFFFFF"
+                    style={{ opacity: isActive ? 1 : 0.75 }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="text-[12px] font-medium"
+                    style={{ color: '#FFFFFF', opacity: isActive ? 1 : 0.75 }}
+                  >
+                    {t.label}
+                  </span>
+                  <span
+                    className="block transition-all duration-300"
+                    style={{
+                      width: isActive ? 16 : 0,
+                      height: 2,
+                      background: '#106E9E',
+                      borderRadius: 2,
+                    }}
+                    aria-hidden="true"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      );
+    }
+
+    // ===================================================================
+    // Avatar
+    // ===================================================================
+
+    function Avatar({ name, color, size = 44, ring = false }) {
+      const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('');
+      return (
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{
+            width: size,
+            height: size,
+            background: color,
+            color: '#FFFFFF',
+            fontWeight: 800,
+            fontSize: size * 0.38,
+            letterSpacing: '0.02em',
+            boxShadow: ring ? '0 0 0 3px #FFFFFF, 0 0 0 5px #106E9E' : 'none',
+          }}
+          aria-hidden="true"
+        >
+          {initials}
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // HOME VIEW
+    // ===================================================================
+
+    function HomeView({ onOpenLeaderboard, onOpenClimb, plan, onHome }) {
+      const top3 = LEADERBOARD.slice(0, 3);
+      const planItems = CLIMB_ACTIVITIES.filter(a => plan[a.id]);
+      const planTotal = planItems.reduce((sum, a) => sum + a.points, 0);
+
+      return (
+        <div className="pb-32 ceoxb-fade">
+          <HeaderChrome />
+
+          {/* Greeting */}
+          <div className="px-5 pt-4">
+            <p
+              className="text-[13px] font-bold uppercase"
+              style={{ color: '#5D666F', letterSpacing: '0.08em' }}
+            >
+              Tuesday · 9 September
+            </p>
+            <h1
+              className="text-[30px] font-extrabold leading-[1.1] mt-1.5 text-black"
+              style={{ letterSpacing: '-0.02em' }}
+            >
+              Good afternoon,<br />Lukas.
+            </h1>
+          </div>
+
+          {/* Leaderboard preview card — three distinct tap zones share one navy surface */}
+          <div className="px-5 mt-6">
+            <div
+              className="w-full rounded-[20px] overflow-hidden"
+              style={{
+                background: '#0C4C6F',
+                color: '#FFFFFF',
+                boxShadow: '0 8px 24px -8px rgba(12,76,111,0.35)',
+              }}
+            >
+              {/* Tap zone 1 — header + top 3, opens the full leaderboard */}
+              <button
+                type="button"
+                onClick={onOpenLeaderboard}
+                className="w-full text-left transition-colors duration-200 hover:bg-white/5 active:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-[-3px]"
+                aria-label="See the full cohort leaderboard"
+              >
+                <div className="px-5 pt-5 pb-4">
+                  <div className="flex items-center justify-between">
+                    <p
+                      className="text-[13px] font-bold uppercase"
+                      style={{ color: 'rgba(255,255,255,0.85)', letterSpacing: '0.08em' }}
+                    >
+                      Cohort leaderboard
+                    </p>
+                    <span
+                      className="text-[12px] font-medium px-2 py-0.5 rounded-full"
+                      style={{
+                        background: 'rgba(255,255,255,0.18)',
+                        color: '#FFFFFF',
+                      }}
+                    >
+                      Updated today
+                    </span>
+                  </div>
+                  <h2 className="text-[22px] font-extrabold mt-2" style={{ letterSpacing: '-0.01em' }}>
+                    Where you stand this week
+                  </h2>
+                </div>
+
+                {/* Top 3 mini-rows — now show "pts" labels next to each score */}
+                <div className="px-5 pb-4 space-y-2.5">
+                  {top3.map((p) => (
+                    <div key={p.rank} className="flex items-center gap-3">
+                      <span
+                        className="w-6 text-[15px] font-extrabold"
+                        style={{ color: '#FFFFFF' }}
+                      >
+                        {p.rank}
+                      </span>
+                      <Avatar name={p.name} color={p.avatar} size={36} />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-[14px] font-bold truncate"
+                          style={{ color: '#FFFFFF' }}
+                        >
+                          {p.name}
+                        </p>
+                        <p
+                          className="text-[12px] font-medium truncate"
+                          style={{ color: 'rgba(255,255,255,0.85)' }}
+                        >
+                          {p.company}
+                        </p>
+                      </div>
+                      <p className="text-right flex-shrink-0">
+                        <span
+                          className="text-[14px] font-extrabold tabular-nums"
+                          style={{ color: '#FFFFFF' }}
+                        >
+                          {p.points.toLocaleString()}
+                        </span>
+                        <span
+                          className="text-[11px] font-medium ml-1"
+                          style={{ color: 'rgba(255,255,255,0.78)' }}
+                        >
+                          pts
+                        </span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </button>
+
+              {/* Divider */}
+              <div className="mx-5 h-px" style={{ background: 'rgba(255,255,255,0.18)' }} aria-hidden="true" />
+
+              {/* Tap zone 2 — user row, opens the user's standing/detail page (Climb).
+                  Includes explicit "See your point breakdown" copy so first-time
+                  users know exactly what tapping leads to. */}
+              <button
+                type="button"
+                onClick={onOpenClimb}
+                className="w-full text-left transition-colors duration-200 hover:bg-white/5 active:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-[-3px]"
+                aria-label={`See your point breakdown. You are ranked ${USER.rank} of ${LEADERBOARD.length} with ${USER.points} points.`}
+              >
+                <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+                  <span
+                    className="w-6 text-[15px] font-extrabold"
+                    style={{ color: '#FFFFFF' }}
+                  >
+                    {USER.rank}
+                  </span>
+                  <Avatar name={USER.name} color={USER.avatar} size={36} ring />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-bold" style={{ color: '#FFFFFF' }}>
+                      You
+                    </p>
+                    <p className="text-[12px] font-medium" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                      {USER.company}
+                    </p>
+                  </div>
+                  <p className="text-right flex-shrink-0">
+                    <span
+                      className="text-[14px] font-extrabold tabular-nums"
+                      style={{ color: '#FFFFFF' }}
+                    >
+                      {USER.points.toLocaleString()}
+                    </span>
+                    <span
+                      className="text-[11px] font-medium ml-1"
+                      style={{ color: 'rgba(255,255,255,0.85)' }}
+                    >
+                      pts
+                    </span>
+                  </p>
+                </div>
+                {/* Direct UX copy — makes the destination explicit */}
+                <div
+                  className="pb-3.5 flex items-center gap-1.5"
+                  style={{ paddingLeft: 64, paddingRight: 20 }}
+                >
+                  <span className="text-[13px] font-bold" style={{ color: '#FFFFFF' }}>
+                    See your point breakdown
+                  </span>
+                  <ChevronRight size={14} strokeWidth={2.5} color="#FFFFFF" aria-hidden="true" />
+                </div>
+              </button>
+
+              {/* Tap zone 3 — footer link, also opens the leaderboard */}
+              <button
+                type="button"
+                onClick={onOpenLeaderboard}
+                className="w-full px-5 py-3 flex items-center justify-between transition-colors duration-200 hover:bg-white/5 active:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-[-3px]"
+                style={{ background: 'rgba(0,0,0,0.18)' }}
+                aria-label="View full leaderboard"
+              >
+                <span className="text-[14px] font-medium" style={{ color: '#FFFFFF' }}>
+                  View full leaderboard
+                </span>
+                <ArrowRight size={18} color="#FFFFFF" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          {/* My plan — only appears once the user has committed to one or more moves */}
+          {planItems.length > 0 && (
+            <div className="px-5 mt-4">
+              <button
+                type="button"
+                onClick={onOpenClimb}
+                className="w-full text-left rounded-[16px] p-4 transition-colors duration-200 active:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid rgba(0,0,0,0.10)',
+                  boxShadow: '0 1px 0 rgba(0,0,0,0.02)',
+                }}
+                aria-label={`My plan. ${planItems.length} ${planItems.length === 1 ? 'move' : 'moves'} added, totaling ${planTotal} points. Tap to manage.`}
+              >
+                <div className="flex items-baseline justify-between">
+                  <p
+                    className="text-[13px] font-bold uppercase"
+                    style={{ color: '#106E9E', letterSpacing: '0.08em' }}
+                  >
+                    My plan
+                  </p>
+                  <p className="text-[13px] tabular-nums">
+                    <span className="font-extrabold" style={{ color: '#0C4C6F' }}>
+                      +{planTotal}
+                    </span>
+                    <span className="font-medium ml-1" style={{ color: '#5D666F' }}>
+                      pts
+                    </span>
+                  </p>
+                </div>
+                <p className="text-[15px] font-extrabold text-black mt-1">
+                  {planItems.length} {planItems.length === 1 ? 'move' : 'moves'} this month
+                </p>
+
+                <div className="mt-3 space-y-2.5">
+                  {planItems.map(item => {
+                    const Icon = CLIMB_ICONS[item.iconName] || Mic;
+                    return (
+                      <div key={item.id} className="flex items-center gap-3">
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: '#EDF2F7' }}
+                          aria-hidden="true"
+                        >
+                          <Icon size={16} color="#0C4C6F" strokeWidth={2.25} />
+                        </div>
+                        <p
+                          className="flex-1 text-[14px] font-medium truncate text-black"
+                        >
+                          {item.title}
+                        </p>
+                        <p className="text-[12px] tabular-nums flex-shrink-0">
+                          <span className="font-extrabold" style={{ color: '#0C4C6F' }}>
+                            +{item.points}
+                          </span>
+                          <span className="font-medium ml-0.5" style={{ color: '#5D666F' }}>
+                            pts
+                          </span>
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div
+                  className="mt-3.5 pt-3 flex items-center justify-end gap-1"
+                  style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}
+                >
+                  <span className="text-[13px] font-medium" style={{ color: '#0C4C6F' }}>
+                    Manage plan
+                  </span>
+                  <ArrowRight size={14} color="#0C4C6F" strokeWidth={2.5} aria-hidden="true" />
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* How rank is calculated — moved from the leaderboard view so the
+              methodology is visible on home before the user opens the board */}
+          <div className="px-5 mt-4">
+            <div className="rounded-[16px] p-4" style={{ background: '#EDF2F7' }}>
+              <p
+                className="text-[13px] font-bold uppercase"
+                style={{ color: '#106E9E', letterSpacing: '0.08em' }}
+              >
+                How rank is calculated
+              </p>
+              <p className="text-[14px] mt-2" style={{ color: '#3F464C', lineHeight: 1.55 }}>
+                Funding milestones, cohort events attended, peer 1:1s logged, and
+                contributions to Discuss. Updated weekly. Fundraises within the last
+                90 days carry the most weight.
+              </p>
+            </div>
+          </div>
+
+          {/* Helper hint */}
+          <div className="px-5 mt-5">
+            <p className="text-[13px]" style={{ color: '#5D666F', lineHeight: 1.5 }}>
+              Tap the leaderboard above to see the full cohort and how to climb.
+            </p>
+          </div>
+
+          <BottomNav active="home" onHome={onHome} />
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // LEADERBOARD VIEW
+    // ===================================================================
+
+    function LeaderboardView({ onBack, onClimb, onVisibility, visibility, onHome }) {
+      const visMeta = VISIBILITY_OPTIONS.find(v => v.id === visibility);
+      const VisIcon = visMeta.icon;
+      const top3 = LEADERBOARD.slice(0, 3);
+      const rest = LEADERBOARD.slice(3);
+      const userRowRef = useRef(null);
+
+      return (
+        <div className="pb-44 ceoxb-fade" style={{ background: '#FFFFFF' }}>
+          {/* Hero podium block */}
+          <div
+            className="relative overflow-hidden"
+            style={{
+              background:
+                'linear-gradient(180deg, #0A3761 0%, #0C4C6F 55%, #062C50 100%)',
+              color: '#FFFFFF',
+            }}
+          >
+            <div
+              className="absolute pointer-events-none ceoxb-glow"
+              style={{
+                top: 70,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 380,
+                height: 380,
+                background:
+                  'radial-gradient(circle, rgba(16,110,158,0.55) 0%, rgba(16,110,158,0) 65%)',
+                filter: 'blur(2px)',
+              }}
+            />
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                top: -40,
+                right: -60,
+                width: 220,
+                height: 220,
+                background:
+                  'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)',
+              }}
+            />
+
+            <div className="relative">
+              <HeaderChrome onBack={onBack} dark />
+
+              <div className="px-5 pt-2 pb-3">
+                <p
+                  className="text-[13px] font-bold uppercase"
+                  style={{ color: 'rgba(255,255,255,0.85)', letterSpacing: '0.08em' }}
+                >
+                  Cohort leaderboard
+                </p>
+                <h1
+                  className="text-[30px] font-extrabold leading-[1.1] mt-1"
+                  style={{ letterSpacing: '-0.02em' }}
+                >
+                  September standings
+                </h1>
+
+                <button
+                  onClick={onVisibility}
+                  aria-label={`Change visibility. Currently ${visMeta.label}.`}
+                  aria-haspopup="dialog"
+                  className="mt-3 inline-flex items-center gap-2 px-4 rounded-full transition-colors duration-200 hover:bg-white/15 active:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                  style={{
+                    minHeight: 44,
+                    background: 'rgba(255,255,255,0.12)',
+                    border: '1px solid rgba(255,255,255,0.28)',
+                  }}
+                >
+                  <VisIcon size={14} strokeWidth={2.25} aria-hidden="true" />
+                  <span className="text-[13px] font-medium">
+                    Visible to your {visibility === 'private' ? 'eyes only' : visibility === 'all' ? 'all members' : 'cohort'}
+                  </span>
+                  <Eye size={14} strokeWidth={2} style={{ opacity: 0.7 }} aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="relative px-5 pt-2 pb-7">
+                <div className="grid grid-cols-3 items-end gap-3">
+                  <PodiumBlock entry={top3[1]} place={2} height={120} />
+                  <PodiumBlock entry={top3[0]} place={1} height={150} highlight />
+                  <PodiumBlock entry={top3[2]} place={3} height={100} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section header */}
+          <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+            <p
+              className="text-[13px] font-bold uppercase"
+              style={{ color: '#5D666F', letterSpacing: '0.08em' }}
+            >
+              Full ranking · 17 CEOs
+            </p>
+            <span className="text-[13px]" style={{ color: '#5D666F' }}>
+              Updated 4h ago
+            </span>
+          </div>
+
+          {/* List */}
+          <div
+            className="px-5 space-y-2"
+            role="list"
+            aria-label="Cohort ranking, positions 4 through 17"
+          >
+            {rest.map((p, i) => (
+              <LeaderRow
+                key={p.rank}
+                entry={p}
+                innerRef={p.isUser ? userRowRef : null}
+                delay={i * 35}
+                onClick={p.isUser ? onClimb : undefined}
+              />
+            ))}
+          </div>
+
+          {/* Floating "you" pill — always-visible quick access to your standing */}
+          <div
+            className="fixed left-1/2 -translate-x-1/2 w-full max-w-[390px] px-4 z-40 pointer-events-none"
+            style={{ bottom: 100 }}
+          >
+            <button
+              type="button"
+              onClick={onClimb}
+              aria-label={`You are ranked ${USER.rank} of ${LEADERBOARD.length}. Tap to see your point breakdown and how to climb.`}
+              className="w-full pointer-events-auto flex items-center gap-3 pl-2 pr-4 rounded-full transition-all duration-300 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              style={{
+                minHeight: 60,
+                background: '#0C4C6F',
+                border: '1px solid rgba(255,255,255,0.10)',
+                boxShadow: '0 14px 30px -10px rgba(6,44,80,0.55), 0 4px 10px -4px rgba(6,44,80,0.30)',
+              }}
+            >
+              <Avatar name={USER.name} color={USER.avatar} size={44} ring />
+              <div className="flex-1 text-left min-w-0">
+                <p
+                  className="text-[12px] font-medium leading-tight"
+                  style={{ color: 'rgba(255,255,255,0.78)' }}
+                >
+                  You · #{USER.rank}
+                </p>
+                <p
+                  className="text-[15px] font-extrabold leading-tight mt-0.5"
+                  style={{ color: '#FFFFFF', letterSpacing: '-0.005em' }}
+                >
+                  See your point breakdown
+                </p>
+              </div>
+              <ChevronRight
+                size={20}
+                strokeWidth={2.5}
+                color="#FFFFFF"
+                style={{ opacity: 0.9 }}
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+
+          <BottomNav active="home" onHome={onHome} />
+        </div>
+      );
+    }
+
+    function PodiumBlock({ entry, place, height, highlight = false }) {
+      return (
+        <div
+          className="flex flex-col items-center"
+          style={{
+            animation: 'ceoxbSlideUp .55s ease-out both',
+            animationDelay: `${place * 70}ms`,
+          }}
+        >
+          <Avatar
+            name={entry.name}
+            color={entry.avatar}
+            size={highlight ? 64 : 52}
+            ring={highlight}
+          />
+          <p
+            className="text-[13px] font-extrabold mt-2.5 text-center leading-tight"
+            style={{ color: '#FFFFFF' }}
+          >
+            {entry.name.split(' ')[0]}<br />
+            <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              {entry.company}
+            </span>
+          </p>
+
+          <div
+            className="mt-2.5 w-full rounded-t-2xl flex flex-col items-center justify-end pb-3 pt-3 relative"
+            style={{
+              height,
+              background: highlight
+                ? 'linear-gradient(180deg, rgba(16,110,158,0.55) 0%, rgba(16,110,158,0.15) 100%)'
+                : 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 100%)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderBottom: 'none',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <span
+              className="text-[40px] font-extrabold leading-none"
+              style={{
+                color: '#FFFFFF',
+                letterSpacing: '-0.025em',
+                textShadow: highlight ? '0 2px 12px rgba(16,110,158,0.5)' : 'none',
+              }}
+            >
+              {place}
+            </span>
+            <span
+              className="text-[12px] font-bold uppercase mt-1"
+              style={{
+                color: 'rgba(255,255,255,0.92)',
+                letterSpacing: '0.08em',
+              }}
+            >
+              {entry.points.toLocaleString()} pts
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    function LeaderRow({ entry, innerRef, delay = 0, onClick }) {
+      const isUser = entry.isUser;
+      const ariaLabel = isUser
+        ? `Your rank: ${entry.rank}. ${entry.points.toLocaleString()} points. ${entry.milestone}, ${entry.ago}. Tap to see your score breakdown and how to climb.`
+        : `Rank ${entry.rank}. ${entry.name}, ${entry.company}. ${entry.points.toLocaleString()} points. ${entry.milestone}, ${entry.ago}.`;
+
+      const sharedProps = {
+        ref: innerRef,
+        role: 'listitem',
+        'aria-label': ariaLabel,
+        className: 'ceoxb-row rounded-[14px] flex items-center gap-3 px-3.5 py-3 transition-colors duration-300 w-full text-left',
+        style: {
+          animationDelay: `${delay}ms`,
+          background: isUser ? '#0C4C6F' : '#FFFFFF',
+          border: isUser ? '1px solid #062C50' : '1px solid rgba(0,0,0,0.07)',
+          color: isUser ? '#FFFFFF' : '#000000',
+          boxShadow: isUser
+            ? '0 8px 22px -10px rgba(12,76,111,0.45)'
+            : '0 1px 0 rgba(0,0,0,0.02)',
+        },
+      };
+
+      const inner = (
+        <React.Fragment>
+          <span
+            className="w-7 text-[16px] font-extrabold tabular-nums text-center"
+            style={{ color: isUser ? 'rgba(255,255,255,0.95)' : '#5D666F' }}
+          >
+            {entry.rank}
+          </span>
+
+          <Avatar name={entry.name} color={entry.avatar} size={42} />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p
+                className="text-[15px] font-bold truncate"
+                style={{ color: isUser ? '#FFFFFF' : '#000000' }}
+              >
+                {isUser ? 'You · ' : ''}{entry.name}
+              </p>
+              {isUser && (
+                <span
+                  className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{
+                    background: '#106E9E',
+                    color: '#FFFFFF',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  You
+                </span>
+              )}
+            </div>
+            <p
+              className="text-[13px] truncate"
+              style={{ color: isUser ? 'rgba(255,255,255,0.85)' : '#5D666F' }}
+            >
+              {entry.company}
+            </p>
+            <p
+              className="text-[13px] truncate mt-0.5"
+              style={{
+                color: isUser ? '#FFFFFF' : '#3F464C',
+                fontWeight: 500,
+              }}
+            >
+              {entry.milestone} · {entry.ago}
+            </p>
+          </div>
+
+          <div className="text-right flex-shrink-0">
+            <p
+              className="text-[16px] font-extrabold tabular-nums leading-none"
+              style={{ color: isUser ? '#FFFFFF' : '#000000' }}
+            >
+              {entry.points.toLocaleString()}
+            </p>
+            <p
+              className="text-[12px] font-medium mt-1"
+              style={{ color: isUser ? 'rgba(255,255,255,0.85)' : '#5D666F' }}
+            >
+              pts
+            </p>
+          </div>
+
+          {isUser && (
+            <ChevronRight
+              size={18}
+              strokeWidth={2.25}
+              color="#FFFFFF"
+              style={{ marginLeft: -4, opacity: 0.85 }}
+              aria-hidden="true"
+            />
+          )}
+        </React.Fragment>
+      );
+
+      if (isUser) {
+        return (
+          <button
+            type="button"
+            onClick={onClick}
+            {...sharedProps}
+            className={sharedProps.className + ' active:scale-[0.995] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2'}
+          >
+            {inner}
+          </button>
+        );
+      }
+
+      return <div {...sharedProps}>{inner}</div>;
+    }
+
+    // ===================================================================
+    // CLIMB VIEW (full screen)
+    // ===================================================================
+
+    function ClimbView({ onBack, plan, setPlan, onHome }) {
+      // `plan` and `setPlan` are lifted to the root so committed moves persist
+      // and Home can read them. `committed` is just a local alias for clarity
+      // when reading the cards section below.
+      const committed = plan;
+      const setCommitted = setPlan;
+
+      return (
+        <div className="pb-32 ceoxb-fade" style={{ background: '#FFFFFF' }}>
+          {/* HERO — navy gradient with stat cards */}
+          <div
+            className="relative overflow-hidden"
+            style={{
+              background:
+                'linear-gradient(180deg, #0A3761 0%, #0C4C6F 55%, #062C50 100%)',
+              color: '#FFFFFF',
+            }}
+          >
+            <div
+              className="absolute pointer-events-none ceoxb-glow"
+              style={{
+                top: 100,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 360,
+                height: 360,
+                background:
+                  'radial-gradient(circle, rgba(16,110,158,0.55) 0%, rgba(16,110,158,0) 65%)',
+                filter: 'blur(2px)',
+              }}
+            />
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                top: -40,
+                right: -60,
+                width: 220,
+                height: 220,
+                background:
+                  'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)',
+              }}
+            />
+
+            <div className="relative">
+              <HeaderChrome onBack={onBack} dark />
+
+              {/* Identity */}
+              <div className="px-5 pt-2 pb-4 flex items-center gap-4">
+                <Avatar name={USER.name} color={USER.avatar} size={64} ring />
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-[13px] font-bold uppercase"
+                    style={{ color: 'rgba(255,255,255,0.78)', letterSpacing: '0.08em' }}
+                  >
+                    Your standing
+                  </p>
+                  <h1
+                    className="text-[22px] font-extrabold leading-tight mt-0.5 truncate"
+                    style={{ letterSpacing: '-0.01em' }}
+                  >
+                    {USER.name}
+                  </h1>
+                  <p
+                    className="text-[13px] truncate"
+                    style={{ color: 'rgba(255,255,255,0.78)' }}
+                  >
+                    {USER.company}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stat cards */}
+              <div className="px-5 grid grid-cols-3 gap-2.5">
+                <StatCard label="Rank" value={`#${USER.rank}`} sub={`of ${LEADERBOARD.length}`} />
+                <StatCard label="Score" value={USER.points.toLocaleString()} sub="composite" />
+                <StatCard label="Climb" value={POINTS_TO_NEXT} sub={`for #${NEXT_RANK.rank}`} />
+              </div>
+
+              {/* Gap callout */}
+              <div className="px-5 pt-3 pb-7">
+                <div
+                  className="rounded-[14px] p-3.5 flex items-center gap-3"
+                  style={{
+                    background: 'rgba(255,255,255,0.10)',
+                    border: '1px solid rgba(255,255,255,0.20)',
+                  }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.15)' }}
+                    aria-hidden="true"
+                  >
+                    <ArrowUp size={18} color="#FFFFFF" strokeWidth={2.5} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-bold" style={{ color: '#FFFFFF' }}>
+                      {POINTS_TO_NEXT} pts to overtake {NEXT_RANK.name.split(' ')[0]} at #{NEXT_RANK.rank}
+                    </p>
+                    <p
+                      className="text-[12px] truncate"
+                      style={{ color: 'rgba(255,255,255,0.78)' }}
+                    >
+                      {NEXT_RANK.company}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SCORE BREAKDOWN */}
+          <div className="px-5 pt-6 pb-2">
+            <p
+              className="text-[13px] font-bold uppercase mb-3"
+              style={{ color: '#5D666F', letterSpacing: '0.08em' }}
+            >
+              What goes into your score
+            </p>
+            <div
+              className="rounded-[16px] overflow-hidden"
+              style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+            >
+              {SCORE_CATEGORIES.map((cat, i) => (
+                <CategoryRow key={cat.id} category={cat} isFirst={i === 0} />
+              ))}
+            </div>
+          </div>
+
+          {/* HOW TO CLIMB */}
+          <div className="px-5 pt-7 pb-6">
+            <p
+              className="text-[13px] font-bold uppercase"
+              style={{ color: '#106E9E', letterSpacing: '0.08em' }}
+            >
+              Move up to #{NEXT_RANK.rank}
+            </p>
+            <h2
+              className="text-[28px] font-extrabold mt-1 leading-tight text-black"
+              style={{ letterSpacing: '-0.02em' }}
+            >
+              How to climb
+            </h2>
+            <p className="text-[14px] mt-2" style={{ color: '#3F464C', lineHeight: 1.55 }}>
+              Specific moves CEOs at #{NEXT_RANK.rank} and above logged in the last 90 days.
+            </p>
+
+            <div className="mt-5 space-y-3" role="group" aria-label="Suggested moves">
+              {CLIMB_ACTIVITIES.map(a => (
+                <ClimbCard
+                  key={a.id}
+                  activity={a}
+                  committed={!!committed[a.id]}
+                  onToggle={() => setCommitted(c => ({ ...c, [a.id]: !c[a.id] }))}
+                />
+              ))}
+            </div>
+
+            <p
+              className="text-[13px] mt-6 text-center"
+              style={{ color: '#5D666F', lineHeight: 1.5 }}
+            >
+              Funding rounds are logged automatically when announced publicly.
+            </p>
+          </div>
+
+          <BottomNav active="home" onHome={onHome} />
+        </div>
+      );
+    }
+
+    function StatCard({ label, value, sub }) {
+      return (
+        <div
+          className="rounded-[14px] p-3 flex flex-col"
+          style={{
+            background: 'rgba(255,255,255,0.10)',
+            border: '1px solid rgba(255,255,255,0.20)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <p
+            className="text-[11px] font-bold uppercase"
+            style={{ color: 'rgba(255,255,255,0.85)', letterSpacing: '0.08em' }}
+          >
+            {label}
+          </p>
+          <span
+            className="text-[26px] font-extrabold tabular-nums leading-none mt-2"
+            style={{ color: '#FFFFFF', letterSpacing: '-0.02em' }}
+          >
+            {value}
+          </span>
+          {sub && (
+            <p
+              className="text-[11px] mt-1.5 truncate"
+              style={{ color: 'rgba(255,255,255,0.75)' }}
+            >
+              {sub}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    function CategoryRow({ category, isFirst }) {
+      const pct = Math.min(category.earned / category.max, 1);
+      return (
+        <div
+          className="px-4 py-4"
+          style={{
+            background: '#FFFFFF',
+            borderTop: isFirst ? 'none' : '1px solid rgba(0,0,0,0.06)',
+          }}
+        >
+          <div className="flex items-baseline justify-between mb-2 gap-3">
+            <p className="text-[15px] font-extrabold text-black">{category.label}</p>
+            <p className="text-[14px] tabular-nums flex-shrink-0">
+              <span className="font-extrabold text-black">{category.earned}</span>
+              <span style={{ color: '#5D666F' }}> / {category.max}</span>
+            </p>
+          </div>
+          <div
+            className="w-full h-1.5 rounded-full overflow-hidden"
+            style={{ background: '#EDF2F7' }}
+            role="progressbar"
+            aria-valuenow={category.earned}
+            aria-valuemin={0}
+            aria-valuemax={category.max}
+            aria-label={`${category.label}: ${category.earned} of ${category.max} points`}
+          >
+            <div
+              className="h-full transition-all duration-500"
+              style={{
+                width: `${pct * 100}%`,
+                background: '#0C4C6F',
+                borderRadius: 999,
+              }}
+            />
+          </div>
+          <p className="text-[13px] mt-2" style={{ color: '#5D666F', lineHeight: 1.5 }}>
+            {category.detail}
+          </p>
+        </div>
+      );
+    }
+
+    function ClimbCard({ activity, committed, onToggle }) {
+      const Icon = CLIMB_ICONS[activity.iconName] || Mic;
+      return (
+        <div
+          className="rounded-[16px] p-4 transition-colors duration-300"
+          style={{
+            background: '#FFFFFF',
+            border: '1px solid rgba(0,0,0,0.10)',
+            boxShadow: '0 1px 0 rgba(0,0,0,0.02)',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: '#EDF2F7' }}
+              aria-hidden="true"
+            >
+              <Icon size={22} color="#0C4C6F" strokeWidth={2.25} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p
+                  className="text-[12px] font-bold uppercase"
+                  style={{ color: '#5D666F', letterSpacing: '0.08em' }}
+                >
+                  {activity.category}
+                </p>
+                {/* Outcome tag — frames the points in terms of rank movement
+                    instead of an abstract score. Honest about whether this
+                    single move overtakes #13 or only narrows the gap. */}
+                <span
+                  className="text-[11px] font-bold uppercase tabular-nums px-2 py-0.5 rounded-full whitespace-nowrap"
+                  style={{
+                    background: '#0C4C6F',
+                    color: '#FFFFFF',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Move up to #{NEXT_RANK.rank}
+                </span>
+              </div>
+              <p
+                className="text-[16px] font-extrabold text-black mt-1.5 leading-tight"
+                style={{ letterSpacing: '-0.005em' }}
+              >
+                {activity.title}
+              </p>
+              <p
+                className="text-[14px] mt-1.5"
+                style={{ color: '#3F464C', lineHeight: 1.5 }}
+              >
+                {activity.detail}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3.5 pl-[60px]">
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-pressed={committed}
+              aria-label={`${activity.title}, worth ${activity.points} points. ${committed ? 'Added to plan. Tap to remove.' : 'Tap to add to plan.'}`}
+              className="px-5 rounded-full font-medium text-[14px] transition-colors duration-300 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+              style={{
+                minHeight: 44,
+                background: committed ? '#062C50' : 'transparent',
+                color: committed ? '#FFFFFF' : '#0C4C6F',
+                border: '1.5px solid ' + (committed ? '#062C50' : '#0C4C6F'),
+              }}
+            >
+              {committed ? 'Added to plan' : 'Add to my plan'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // VISIBILITY SHEET
+    // ===================================================================
+
+    function VisibilitySheet({ value, onChange, onClose }) {
+      const [local, setLocal] = useState(value);
+
+      return (
+        <SheetShell onClose={onClose} ariaLabel="Visibility settings">
+          <div className="px-5 pt-2 pb-4">
+            <p
+              className="text-[13px] font-bold uppercase"
+              style={{ color: '#106E9E', letterSpacing: '0.08em' }}
+            >
+              Visibility
+            </p>
+            <h2
+              className="text-[24px] font-extrabold leading-[1.2] mt-1.5 text-black"
+              style={{ letterSpacing: '-0.01em' }}
+            >
+              Who can see your rank?
+            </h2>
+            <p className="text-[14px] mt-2" style={{ color: '#3F464C', lineHeight: 1.55 }}>
+              You can change this anytime. Your rank is calculated either way —
+              this only controls who sees your standing.
+            </p>
+          </div>
+
+          <div className="px-5 pb-3 space-y-2.5">
+            {VISIBILITY_OPTIONS.map(opt => {
+              const Icon = opt.icon;
+              const on = local === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setLocal(opt.id)}
+                  aria-pressed={on}
+                  aria-label={`${opt.label}. ${opt.desc}`}
+                  className="w-full text-left rounded-[14px] p-4 flex gap-3.5 transition-all duration-300 active:scale-[0.995] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+                  style={{
+                    background: on ? '#0C4C6F' : '#FFFFFF',
+                    border: on ? '1px solid #062C50' : '1px solid rgba(0,0,0,0.10)',
+                    color: on ? '#FFFFFF' : '#000000',
+                    boxShadow: on
+                      ? '0 8px 22px -10px rgba(12,76,111,0.45)'
+                      : '0 1px 0 rgba(0,0,0,0.02)',
+                  }}
+                >
+                  <div
+                    className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors duration-300"
+                    style={{
+                      background: on ? 'rgba(255,255,255,0.15)' : '#EDF2F7',
+                      color: on ? '#FFFFFF' : '#0C4C6F',
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Icon size={18} strokeWidth={2.25} />
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p
+                        className="text-[16px] font-extrabold"
+                        style={{ color: on ? '#FFFFFF' : '#000000' }}
+                      >
+                        {opt.label}
+                      </p>
+                      <span
+                        className="w-5 h-5 rounded-full flex items-center justify-center transition-colors duration-300"
+                        style={{
+                          background: on ? '#FFFFFF' : 'transparent',
+                          border: on ? 'none' : '1.5px solid rgba(0,0,0,0.25)',
+                        }}
+                        aria-hidden="true"
+                      >
+                        {on && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ background: '#0C4C6F' }}
+                          />
+                        )}
+                      </span>
+                    </div>
+                    <p
+                      className="text-[13px] mt-1"
+                      style={{
+                        color: on ? 'rgba(255,255,255,0.85)' : '#5D666F',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {opt.desc}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="px-5 pt-2 pb-6">
+            <button
+              onClick={() => { onChange(local); onClose(); }}
+              className="w-full rounded-full flex items-center justify-center transition-all duration-300 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+              style={{
+                minHeight: 56,
+                background: '#0C4C6F',
+                color: '#FFFFFF',
+                fontSize: 17,
+                fontWeight: 500,
+                boxShadow: '0 6px 20px -6px rgba(12,76,111,0.45)',
+              }}
+            >
+              Save visibility
+            </button>
+          </div>
+        </SheetShell>
+      );
+    }
+
+    // ===================================================================
+    // SHEET SHELL
+    // ===================================================================
+
+    function SheetShell({ children, onClose, ariaLabel }) {
+      useEffect(() => {
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+      }, []);
+
+      return (
+        <div
+          className="absolute inset-0 z-50 flex items-end"
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+        >
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="absolute inset-0 ceoxb-fade"
+            style={{ background: 'rgba(6,44,80,0.45)', backdropFilter: 'blur(2px)' }}
+          />
+          <div
+            className="relative w-full bg-white rounded-t-[28px] ceoxb-sheet max-h-[88%] overflow-y-auto ceoxb-scroll"
+            style={{ boxShadow: '0 -12px 40px -8px rgba(0,0,0,0.25)' }}
+          >
+            <div className="pt-3 pb-1 flex justify-center">
+              <span
+                className="block w-10 h-1 rounded-full"
+                style={{ background: 'rgba(0,0,0,0.18)' }}
+                aria-hidden="true"
+              />
+            </div>
+
+            <div className="absolute top-3 right-3">
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-200 hover:bg-black/5 active:bg-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#106E9E] focus-visible:outline-offset-2"
+                style={{ color: '#5D666F' }}
+              >
+                <X size={18} strokeWidth={2.25} aria-hidden="true" />
+              </button>
+            </div>
+
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    // ===================================================================
+    // Mount
+    // ===================================================================
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<CEOXBLeaderboardPrototype />);
+  </script>
+</body>
+</html>
